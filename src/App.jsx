@@ -401,7 +401,7 @@ function InquiryModal({ onPick, onClose, t }) {
   )
 }
 
-function MicListenPopup({ t, onClose, onQuestion, liveTranscript }) {
+function MicListenPopup({ t, onClose, onQuestion, liveFinal, liveInterim }) {
   // 말하기 버튼 클릭이 곧바로 배경 클릭으로 처리되면 빈 인식으로 닫히며 토스트가 뜬다.
   const openedAtRef = useRef(0)
   useEffect(() => {
@@ -418,18 +418,25 @@ function MicListenPopup({ t, onClose, onQuestion, liveTranscript }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="mic-listen-title"
-      aria-describedby="mic-listen-desc mic-fb1 mic-fb2"
+      aria-describedby="mic-live-region mic-listen-desc mic-fb1 mic-fb2"
       onClick={onBackdropClick}
     >
       <div className="mic-listen-box" onClick={e => e.stopPropagation()}>
         <div className="mic-listen-icon" aria-hidden>🎙️</div>
         <div id="mic-listen-title" className="mic-listen-title">{t.micOn}</div>
-        {liveTranscript ? (
-          <div className="mic-listen-live-wrap" aria-live="polite">
-            <div className="mic-listen-live-label">{t.micLiveCaption}</div>
-            <div className="mic-listen-live-text">{liveTranscript}</div>
+        <div id="mic-live-region" className="mic-listen-live-wrap" aria-live="polite">
+          <div className="mic-listen-live-label">{t.micLiveCaption}</div>
+          <div className="mic-listen-live-text">
+            {liveFinal || liveInterim ? (
+              <>
+                {liveFinal}
+                <span className="mic-listen-interim">{liveInterim}</span>
+              </>
+            ) : (
+              <span className="mic-listen-live-placeholder">{t.micLivePlaceholder}</span>
+            )}
           </div>
-        ) : null}
+        </div>
         <div id="mic-listen-desc" className="mic-listen-sub mic-listen-line1">{t.micCloseHint}</div>
         <div className="mic-listen-gap" aria-hidden />
         <div id="mic-fb1" className="mic-listen-fb-line">{t.micFallbackLine1}</div>
@@ -476,7 +483,8 @@ export default function App() {
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [showAiQuestionModal, setShowAiQuestionModal] = useState(false)
   const [aiQuestionDraft, setAiQuestionDraft] = useState('')
-  const [voiceCaption, setVoiceCaption] = useState('')
+  const [voiceLiveFinal, setVoiceLiveFinal] = useState('')
+  const [voiceLiveInterim, setVoiceLiveInterim] = useState('')
   const [aiRecOpen, setAiRecOpen] = useState(false)
   const [aiRecQuery, setAiRecQuery] = useState('')
   const [aiRecItems, setAiRecItems] = useState([])
@@ -613,7 +621,8 @@ export default function App() {
 
   useEffect(() => {
     if (!isListening) {
-      setVoiceCaption('')
+      setVoiceLiveFinal('')
+      setVoiceLiveInterim('')
       return undefined
     }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -629,13 +638,17 @@ export default function App() {
     rec.maxAlternatives = 1
 
     rec.onresult = event => {
-      let text = ''
+      let finalPart = ''
+      let interimPart = ''
       for (let i = 0; i < event.results.length; i += 1) {
-        text += event.results[i][0].transcript
+        const piece = event.results[i][0].transcript
+        if (event.results[i].isFinal) finalPart += piece
+        else interimPart += piece
       }
-      const v = text.trim()
+      const v = (finalPart + interimPart).trim()
       voiceCaptionRef.current = v
-      setVoiceCaption(v)
+      setVoiceLiveFinal(finalPart)
+      setVoiceLiveInterim(interimPart)
     }
     rec.onerror = ev => {
       const code = ev && ev.error
@@ -670,7 +683,8 @@ export default function App() {
 
     recognitionRef.current = rec
     voiceCaptionRef.current = ''
-    setVoiceCaption('')
+    setVoiceLiveFinal('')
+    setVoiceLiveInterim('')
     try {
       rec.start()
       speechStartedAtRef.current = Date.now()
@@ -701,7 +715,8 @@ export default function App() {
         return
       }
       voiceCaptionRef.current = ''
-      setVoiceCaption('')
+      setVoiceLiveFinal('')
+      setVoiceLiveInterim('')
       // 클릭이 듣기 오버레이 배경으로 넘어가 즉시 닫히는 것을 줄이기 위해 한 틱 뒤에 연다.
       window.setTimeout(() => setIsListening(true), 0)
     }
@@ -711,7 +726,8 @@ export default function App() {
     const q = voiceCaptionRef.current.trim()
     setIsListening(false)
     voiceCaptionRef.current = ''
-    setVoiceCaption('')
+    setVoiceLiveFinal('')
+    setVoiceLiveInterim('')
     if (q) window.setTimeout(() => openAiRecommend(q), 0)
     else setMiniToastMsg(t.speechNoResult)
   }
@@ -875,7 +891,8 @@ export default function App() {
       {isListening && (
         <MicListenPopup
           t={t}
-          liveTranscript={voiceCaption}
+          liveFinal={voiceLiveFinal}
+          liveInterim={voiceLiveInterim}
           onClose={closeMicListen}
           onQuestion={() => {
             const draft = voiceCaptionRef.current.trim()

@@ -416,13 +416,17 @@ body {
 .mic-listen-question-btn:active { transform: scale(.98); }
 .mic-listen-live-wrap {
   text-align: left; background: #f7f7f7; border-radius: 12px; padding: 10px 12px;
-  margin: 0 0 12px; border: 1px solid #e8e8e8; max-height: 88px; overflow-y: auto;
+  margin: 0 0 12px; border: 1px solid #e8e8e8; max-height: 120px; overflow-y: auto;
 }
 .mic-listen-live-label {
   font-size: 10px; font-weight: 700; color: #e63946; text-transform: uppercase;
   letter-spacing: .04em; margin-bottom: 4px;
 }
 .mic-listen-live-text { font-size: 14px; color: #222; line-height: 1.45; word-break: keep-all; }
+.mic-listen-interim {
+  color: #555; font-style: italic;
+}
+.mic-listen-live-placeholder { color: #888; font-size: 13px; }
 
 /* STAFF TOAST */
 .staff-toast-overlay {
